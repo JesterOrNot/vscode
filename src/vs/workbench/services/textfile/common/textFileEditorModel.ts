@@ -8,7 +8,7 @@ import { Emitter } from 'vs/base/common/event';
 import { guessMimeTypes } from 'vs/base/common/mime';
 import { toErrorMessage } from 'vs/base/common/errorMessage';
 import { URI } from 'vs/base/common/uri';
-import { isUndefinedOrNull, assertIsDefined } from 'vs/base/common/types';
+import { assertIsDefined } from 'vs/base/common/types';
 import { IWorkspaceContextService } from 'vs/platform/workspace/common/workspace';
 import { IEnvironmentService } from 'vs/platform/environment/common/environment';
 import { ITextFileService, ModelState, ITextFileEditorModel, ISaveErrorHandler, ISaveParticipant, StateChange, ITextFileStreamContent, ILoadOptions, LoadReason, IResolvedTextFileEditorModel, ITextFileSaveOptions } from 'vs/workbench/services/textfile/common/textfiles';
@@ -564,19 +564,37 @@ export class TextFileEditorModel extends BaseTextEditorModel implements ITextFil
 			return false;
 		}
 
+		if (this.isReadonly()) {
+			this.logService.trace('[text file model] save() - ignoring request for readonly resource', this.resource.toString());
+
+			return false; // if model is readonly we do not attempt to save at all
+		}
+
+		if (
+			(this.hasState(ModelState.CONFLICT) || this.hasState(ModelState.ERROR)) &&
+			(options.reason === SaveReason.AUTO || options.reason === SaveReason.FOCUS_CHANGE || options.reason === SaveReason.WINDOW_CHANGE)
+		) {
+			this.logService.trace('[text file model] save() - ignoring auto save request for model that is in conflict or error', this.resource.toString());
+
+			return false; // if model is in save conflict or error, do not save unless save reason is explicit
+		}
+
 		this.logService.trace('[text file model] save() - enter', this.resource.toString());
 
-		await this.doSave(this.versionId, options);
+		await this.doSave(options);
+
+		this.logService.trace('[text file model] save() - exit', this.resource.toString());
 
 		return true;
 	}
 
-	private doSave(versionId: number, options: ITextFileSaveOptions): Promise<void> {
-		if (isUndefinedOrNull(options.reason)) {
+	private doSave(options: ITextFileSaveOptions): Promise<void> {
+		if (typeof options.reason !== 'number') {
 			options.reason = SaveReason.EXPLICIT;
 		}
 
-		this.logService.trace(`[text file model] doSave(${versionId}) - enter with versionId ' + versionId`, this.resource.toString());
+		let versionId = this.versionId;
+		this.logService.trace(`[text file model] doSave(${versionId}) - enter with versionId ${versionId}`, this.resource.toString());
 
 		// Lookup any running pending save for this versionId and return it if found
 		//
@@ -589,14 +607,10 @@ export class TextFileEditorModel extends BaseTextEditorModel implements ITextFil
 			return this.saveSequentializer.pendingSave || Promise.resolve();
 		}
 
-		// Return early if not dirty (unless forced) or version changed meanwhile
+		// Return early if not dirty (unless forced)
 		//
-		// Scenario A: user invoked save action even though the model is not dirty
-		// Scenario B: auto save was triggered for a certain change by the user but meanwhile the user changed
-		//             the contents and the version for which auto save was started is no longer the latest.
-		//             Thus we avoid spawning multiple auto saves and only take the latest.
-		//
-		if ((!options.force && !this.dirty) || versionId !== this.versionId) {
+		// Scenario: user invoked save action even though the model is not dirty
+		if (!options.force && !this.dirty) {
 			this.logService.trace(`[text file model] doSave(${versionId}) - exit - because not dirty and/or versionId is different (this.isDirty: ${this.dirty}, this.versionId: ${this.versionId})`, this.resource.toString());
 
 			return Promise.resolve();
@@ -614,7 +628,7 @@ export class TextFileEditorModel extends BaseTextEditorModel implements ITextFil
 			this.logService.trace(`[text file model] doSave(${versionId}) - exit - because busy saving`, this.resource.toString());
 
 			// Register this as the next upcoming save and return
-			return this.saveSequentializer.setNext(() => this.doSave(this.versionId /* make sure to use latest version id here */, options));
+			return this.saveSequentializer.setNext(() => this.doSave(options));
 		}
 
 		// Push all edit operations to the undo stack so that the user has a chance to
