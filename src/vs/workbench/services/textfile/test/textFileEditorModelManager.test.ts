@@ -193,8 +193,14 @@ suite('Files - TextFileEditorModelManager', () => {
 		model1.textEditorModel!.setValue('changed');
 		model1.updatePreferredEncoding('utf16');
 
+		await timeout(10);
+		assert.equal(contentCounter, 1);
+
 		await model1.revert();
 		model1.textEditorModel!.setValue('changed again');
+
+		await timeout(10);
+		assert.equal(contentCounter, 2);
 
 		await model1.save();
 		model1.dispose();
@@ -207,8 +213,6 @@ suite('Files - TextFileEditorModelManager', () => {
 		assert.equal(savedCounter, 1);
 		assert.equal(encodingCounter, 2);
 
-		await timeout(10);
-		assert.equal(contentCounter, 2);
 		model1.dispose();
 		model2.dispose();
 		assert.ok(!accessor.modelService.getModel(resource1));

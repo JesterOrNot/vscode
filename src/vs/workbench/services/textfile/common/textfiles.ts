@@ -283,7 +283,8 @@ export const enum StateChange {
 	REVERTED,
 	ENCODING,
 	CONTENT_CHANGE,
-	ORPHANED_CHANGE
+	ORPHANED_CHANGE,
+	DISPOSED
 }
 
 export class TextFileModelChangeEvent {
@@ -379,15 +380,16 @@ export interface IModelLoadOrCreateOptions {
 
 export interface ITextFileEditorModelManager {
 
-	readonly onModelDisposed: Event<URI>;
+	readonly onModelDisposed: Event<TextFileModelChangeEvent>;
+
 	readonly onModelContentChanged: Event<TextFileModelChangeEvent>;
 	readonly onModelEncodingChanged: Event<TextFileModelChangeEvent>;
+	readonly onModelOrphanedChanged: Event<TextFileModelChangeEvent>;
 
 	readonly onModelDirty: Event<TextFileModelChangeEvent>;
 	readonly onModelSaveError: Event<TextFileModelChangeEvent>;
 	readonly onModelSaved: Event<TextFileModelChangeEvent>;
 	readonly onModelReverted: Event<TextFileModelChangeEvent>;
-	readonly onModelOrphanedChanged: Event<TextFileModelChangeEvent>;
 
 	readonly onModelsDirty: Event<readonly TextFileModelChangeEvent[]>;
 	readonly onModelsSaveError: Event<readonly TextFileModelChangeEvent[]>;
@@ -430,8 +432,8 @@ export interface ILoadOptions {
 
 export interface ITextFileEditorModel extends ITextEditorModel, IEncodingSupport, IModeSupport, IWorkingCopy {
 
-	readonly onDidContentChange: Event<StateChange>;
-	readonly onDidStateChange: Event<StateChange>;
+	readonly onDidChangeContent: Event<void>;
+	readonly onDidChangeState: Event<StateChange>;
 
 	hasState(state: ModelState): boolean;
 

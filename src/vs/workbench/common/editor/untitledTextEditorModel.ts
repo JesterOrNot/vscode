@@ -9,7 +9,7 @@ import { URI } from 'vs/base/common/uri';
 import { CONTENT_CHANGE_EVENT_BUFFER_DELAY } from 'vs/platform/files/common/files';
 import { IModeService } from 'vs/editor/common/services/modeService';
 import { IModelService } from 'vs/editor/common/services/modelService';
-import { Event, Emitter } from 'vs/base/common/event';
+import { Emitter } from 'vs/base/common/event';
 import { RunOnceScheduler } from 'vs/base/common/async';
 import { IBackupFileService, IResolvedBackup } from 'vs/workbench/services/backup/common/backup';
 import { ITextResourceConfigurationService } from 'vs/editor/common/services/textResourceConfigurationService';
@@ -23,14 +23,14 @@ export class UntitledTextEditorModel extends BaseTextEditorModel implements IEnc
 
 	static DEFAULT_CONTENT_CHANGE_BUFFER_DELAY = CONTENT_CHANGE_EVENT_BUFFER_DELAY;
 
-	private readonly _onDidChangeContent: Emitter<void> = this._register(new Emitter<void>());
-	readonly onDidChangeContent: Event<void> = this._onDidChangeContent.event;
+	private readonly _onDidChangeContent = this._register(new Emitter<void>());
+	readonly onDidChangeContent = this._onDidChangeContent.event;
 
-	private readonly _onDidChangeDirty: Emitter<void> = this._register(new Emitter<void>());
-	readonly onDidChangeDirty: Event<void> = this._onDidChangeDirty.event;
+	private readonly _onDidChangeDirty = this._register(new Emitter<void>());
+	readonly onDidChangeDirty = this._onDidChangeDirty.event;
 
-	private readonly _onDidChangeEncoding: Emitter<void> = this._register(new Emitter<void>());
-	readonly onDidChangeEncoding: Event<void> = this._onDidChangeEncoding.event;
+	private readonly _onDidChangeEncoding = this._register(new Emitter<void>());
+	readonly onDidChangeEncoding = this._onDidChangeEncoding.event;
 
 	readonly capabilities = WorkingCopyCapabilities.Untitled;
 

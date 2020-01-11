@@ -67,7 +67,7 @@ suite('Files - TextFileEditorModel', () => {
 		assert.equal(accessor.workingCopyService.isDirty(model.resource), true);
 
 		let savedEvent = false;
-		model.onDidStateChange(e => {
+		model.onDidChangeState(e => {
 			if (e === StateChange.SAVED) {
 				savedEvent = true;
 			}
@@ -104,7 +104,7 @@ suite('Files - TextFileEditorModel', () => {
 		await model.load();
 
 		let savedEvent = false;
-		model.onDidStateChange(e => {
+		model.onDidChangeState(e => {
 			if (e === StateChange.SAVED) {
 				savedEvent = true;
 			}
@@ -178,7 +178,7 @@ suite('Files - TextFileEditorModel', () => {
 		const model = instantiationService.createInstance(TextFileEditorModel, toResource.call(this, '/path/index.txt'), 'utf8', undefined);
 		assert.ok(model.hasState(ModelState.SAVED));
 
-		model.onDidStateChange(e => {
+		model.onDidChangeState(e => {
 			assert.ok(e !== StateChange.DIRTY && e !== StateChange.SAVED);
 		});
 
@@ -206,7 +206,7 @@ suite('Files - TextFileEditorModel', () => {
 
 		const model = instantiationService.createInstance(TextFileEditorModel, toResource.call(this, '/path/index_async.txt'), 'utf8', undefined);
 
-		model.onDidStateChange(e => {
+		model.onDidChangeState(e => {
 			if (e === StateChange.REVERTED) {
 				eventCounter++;
 			}
@@ -243,7 +243,7 @@ suite('Files - TextFileEditorModel', () => {
 
 		const model = instantiationService.createInstance(TextFileEditorModel, toResource.call(this, '/path/index_async.txt'), 'utf8', undefined);
 
-		model.onDidStateChange(e => {
+		model.onDidChangeState(e => {
 			if (e === StateChange.REVERTED) {
 				eventCounter++;
 			}
@@ -303,7 +303,7 @@ suite('Files - TextFileEditorModel', () => {
 		await model.revert({ soft: true });
 		assert.ok(!model.isDirty());
 
-		model.onDidStateChange(e => {
+		model.onDidChangeState(e => {
 			if (e === StateChange.DIRTY) {
 				eventCounter++;
 			}
@@ -388,7 +388,7 @@ suite('Files - TextFileEditorModel', () => {
 		let eventCounter = 0;
 		const model: TextFileEditorModel = instantiationService.createInstance(TextFileEditorModel, toResource.call(this, '/path/index_async.txt'), 'utf8', undefined);
 
-		model.onDidStateChange(e => {
+		model.onDidChangeState(e => {
 			if (e === StateChange.SAVED) {
 				assert.equal(snapshotToString(model.createSnapshot()!), 'bar');
 				assert.ok(!model.isDirty());

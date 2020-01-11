@@ -18,7 +18,7 @@ import { onUnexpectedError } from 'vs/base/common/errors';
 
 export class TextFileEditorModelManager extends Disposable implements ITextFileEditorModelManager {
 
-	private readonly _onModelDisposed = this._register(new Emitter<URI>());
+	private readonly _onModelDisposed = this._register(new Emitter<TextFileModelChangeEvent>());
 	readonly onModelDisposed = this._onModelDisposed.event;
 
 	private readonly _onModelContentChanged = this._register(new Emitter<TextFileModelChangeEvent>());
@@ -183,7 +183,7 @@ export class TextFileEditorModelManager extends Disposable implements ITextFileE
 			modelPromise = model.load(options);
 
 			// Install state change listener
-			this.mapResourceToStateChangeListener.set(resource, model.onDidStateChange(state => {
+			this.mapResourceToStateChangeListener.set(resource, model.onDidChangeState(state => {
 				const event = new TextFileModelChangeEvent(newModel, state);
 				switch (state) {
 					case StateChange.DIRTY:
@@ -208,8 +208,8 @@ export class TextFileEditorModelManager extends Disposable implements ITextFileE
 			}));
 
 			// Install model content change listener
-			this.mapResourceToModelContentChangeListener.set(resource, model.onDidContentChange(e => {
-				this._onModelContentChanged.fire(new TextFileModelChangeEvent(newModel, e));
+			this.mapResourceToModelContentChangeListener.set(resource, model.onDidChangeContent(() => {
+				this._onModelContentChanged.fire(new TextFileModelChangeEvent(newModel, StateChange.CONTENT_CHANGE));
 			}));
 		}
 
@@ -283,7 +283,7 @@ export class TextFileEditorModelManager extends Disposable implements ITextFileE
 		this.mapResourceToModel.set(resource, model);
 		this.mapResourceToDisposeListener.set(resource, model.onDispose(() => {
 			this.remove(resource);
-			this._onModelDisposed.fire(resource);
+			this._onModelDisposed.fire(new TextFileModelChangeEvent(model, StateChange.DISPOSED));
 		}));
 	}
 

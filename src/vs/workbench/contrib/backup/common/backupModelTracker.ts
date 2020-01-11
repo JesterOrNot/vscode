@@ -6,7 +6,7 @@
 import { URI as Uri } from 'vs/base/common/uri';
 import { IBackupFileService } from 'vs/workbench/services/backup/common/backup';
 import { Disposable } from 'vs/base/common/lifecycle';
-import { ITextFileService, TextFileModelChangeEvent, StateChange } from 'vs/workbench/services/textfile/common/textfiles';
+import { ITextFileService, TextFileModelChangeEvent } from 'vs/workbench/services/textfile/common/textfiles';
 import { IUntitledTextEditorService } from 'vs/workbench/services/untitled/common/untitledTextEditorService';
 import { IWorkbenchContribution } from 'vs/workbench/common/contributions';
 import { CONTENT_CHANGE_EVENT_BUFFER_DELAY } from 'vs/platform/files/common/files';
@@ -16,7 +16,7 @@ const AUTO_SAVE_AFTER_DELAY_DISABLED_TIME = CONTENT_CHANGE_EVENT_BUFFER_DELAY + 
 
 export class BackupModelTracker extends Disposable implements IWorkbenchContribution {
 
-	private configuredAutoSaveAfterDelay = false;
+	private configuredAutoSaveAfterShortDelay = false;
 
 	constructor(
 		@IBackupFileService private readonly backupFileService: IBackupFileService,
@@ -32,13 +32,14 @@ export class BackupModelTracker extends Disposable implements IWorkbenchContribu
 	private registerListeners() {
 
 		// Listen for text file model changes
-		this._register(this.textFileService.models.onModelContentChanged(e => this.onTextFileModelChanged(e)));
+		this._register(this.textFileService.models.onModelContentChanged(e => this.onTextFileModelContentChanged(e)));
 		this._register(this.textFileService.models.onModelSaved(e => this.discardBackup(e.resource)));
-		this._register(this.textFileService.models.onModelDisposed(e => this.discardBackup(e)));
+		this._register(this.textFileService.models.onModelReverted(e => this.discardBackup(e.resource)));
+		this._register(this.textFileService.models.onModelDisposed(e => this.discardBackup(e.resource)));
 
 		// Listen for untitled model changes
 		this._register(this.untitledTextEditorService.onDidCreate(e => this.onUntitledModelCreated(e)));
-		this._register(this.untitledTextEditorService.onDidChangeContent(e => this.onUntitledModelChanged(e)));
+		this._register(this.untitledTextEditorService.onDidChangeContent(e => this.onUntitledModelContentChanged(e)));
 		this._register(this.untitledTextEditorService.onDidDisposeModel(e => this.discardBackup(e)));
 
 		// Listen to auto save config changes
@@ -46,23 +47,20 @@ export class BackupModelTracker extends Disposable implements IWorkbenchContribu
 	}
 
 	private onAutoSaveConfigurationChange(configuration: IAutoSaveConfiguration): void {
-		this.configuredAutoSaveAfterDelay = typeof configuration.autoSaveDelay === 'number' && configuration.autoSaveDelay < AUTO_SAVE_AFTER_DELAY_DISABLED_TIME;
+		this.configuredAutoSaveAfterShortDelay = typeof configuration.autoSaveDelay === 'number' && configuration.autoSaveDelay < AUTO_SAVE_AFTER_DELAY_DISABLED_TIME;
 	}
 
-	private onTextFileModelChanged(event: TextFileModelChangeEvent): void {
-		if (event.kind === StateChange.REVERTED) {
-			// This must proceed even if auto save after delay is configured in order to clean up
-			// any backups made before the config change
-			this.discardBackup(event.resource);
-		} else if (event.kind === StateChange.CONTENT_CHANGE) {
-			// Do not backup when auto save after delay is configured
-			if (!this.configuredAutoSaveAfterDelay) {
-				const model = this.textFileService.models.get(event.resource);
-				if (model) {
-					model.backup();
-				}
-			}
+	private onTextFileModelContentChanged(event: TextFileModelChangeEvent): void {
+		if (this.configuredAutoSaveAfterShortDelay) {
+			return; // do not backup when auto save is enabled with a short delay
 		}
+
+		const model = this.textFileService.models.get(event.resource);
+		if (!model || !model.isDirty()) {
+			return; // do not backup if model is not dirty
+		}
+
+		model.backup();
 	}
 
 	private onUntitledModelCreated(resource: Uri): void {
@@ -71,7 +69,7 @@ export class BackupModelTracker extends Disposable implements IWorkbenchContribu
 		}
 	}
 
-	private onUntitledModelChanged(resource: Uri): void {
+	private onUntitledModelContentChanged(resource: Uri): void {
 		if (this.untitledTextEditorService.isDirty(resource)) {
 			this.untitledTextEditorService.createOrGet({ resource }).resolve().then(model => model.backup());
 		} else {
