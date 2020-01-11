@@ -382,7 +382,6 @@ export interface ITextFileEditorModelManager {
 
 	readonly onModelDisposed: Event<TextFileModelChangeEvent>;
 
-	readonly onModelContentChanged: Event<TextFileModelChangeEvent>;
 	readonly onModelEncodingChanged: Event<TextFileModelChangeEvent>;
 	readonly onModelOrphanedChanged: Event<TextFileModelChangeEvent>;
 
@@ -394,7 +393,6 @@ export interface ITextFileEditorModelManager {
 	readonly onModelsDirty: Event<readonly TextFileModelChangeEvent[]>;
 	readonly onModelsSaveError: Event<readonly TextFileModelChangeEvent[]>;
 	readonly onModelsSaved: Event<readonly TextFileModelChangeEvent[]>;
-	readonly onModelsReverted: Event<readonly TextFileModelChangeEvent[]>;
 
 	get(resource: URI): ITextFileEditorModel | undefined;
 
@@ -432,7 +430,6 @@ export interface ILoadOptions {
 
 export interface ITextFileEditorModel extends ITextEditorModel, IEncodingSupport, IModeSupport, IWorkingCopy {
 
-	readonly onDidChangeContent: Event<void>;
 	readonly onDidChangeState: Event<StateChange>;
 
 	hasState(state: ModelState): boolean;

@@ -15,12 +15,12 @@ import { ITextFileService, ModelState, ITextFileEditorModel, ISaveErrorHandler, 
 import { EncodingMode, IRevertOptions, SaveReason } from 'vs/workbench/common/editor';
 import { BaseTextEditorModel } from 'vs/workbench/common/editor/textEditorModel';
 import { IBackupFileService } from 'vs/workbench/services/backup/common/backup';
-import { IFileService, FileOperationError, FileOperationResult, CONTENT_CHANGE_EVENT_BUFFER_DELAY, FileChangesEvent, FileChangeType, IFileStatWithMetadata, ETAG_DISABLED, FileSystemProviderCapabilities } from 'vs/platform/files/common/files';
+import { IFileService, FileOperationError, FileOperationResult, FileChangesEvent, FileChangeType, IFileStatWithMetadata, ETAG_DISABLED, FileSystemProviderCapabilities } from 'vs/platform/files/common/files';
 import { IInstantiationService } from 'vs/platform/instantiation/common/instantiation';
 import { IModeService } from 'vs/editor/common/services/modeService';
 import { IModelService } from 'vs/editor/common/services/modelService';
 import { ITelemetryService } from 'vs/platform/telemetry/common/telemetry';
-import { RunOnceScheduler, timeout } from 'vs/base/common/async';
+import { timeout } from 'vs/base/common/async';
 import { ITextBufferFactory } from 'vs/editor/common/model';
 import { hash } from 'vs/base/common/hash';
 import { INotificationService } from 'vs/platform/notification/common/notification';
@@ -60,9 +60,6 @@ type TelemetryData = {
  */
 export class TextFileEditorModel extends BaseTextEditorModel implements ITextFileEditorModel {
 
-	static DEFAULT_CONTENT_CHANGE_BUFFER_DELAY = CONTENT_CHANGE_EVENT_BUFFER_DELAY;
-	static DEFAULT_ORPHANED_CHANGE_BUFFER_DELAY = 100;
-
 	static WHITELIST_JSON = ['package.json', 'package-lock.json', 'tsconfig.json', 'jsconfig.json', 'bower.json', '.eslintrc.json', 'tslint.json', 'composer.json'];
 	static WHITELIST_WORKSPACE_JSON = ['settings.json', 'extensions.json', 'tasks.json', 'launch.json'];
 
@@ -93,9 +90,6 @@ export class TextFileEditorModel extends BaseTextEditorModel implements ITextFil
 
 	private readonly saveSequentializer = new SaveSequentializer();
 	private lastSaveAttemptTime = 0;
-
-	private readonly contentChangeEventScheduler = this._register(new RunOnceScheduler(() => this._onDidChangeContent.fire(), TextFileEditorModel.DEFAULT_CONTENT_CHANGE_BUFFER_DELAY));
-	private readonly orphanedChangeEventScheduler = this._register(new RunOnceScheduler(() => this._onDidChangeState.fire(StateChange.ORPHANED_CHANGE), TextFileEditorModel.DEFAULT_ORPHANED_CHANGE_BUFFER_DELAY));
 
 	private dirty = false;
 	private inConflictMode = false;
@@ -182,7 +176,7 @@ export class TextFileEditorModel extends BaseTextEditorModel implements ITextFil
 	private setOrphaned(orphaned: boolean): void {
 		if (this.inOrphanMode !== orphaned) {
 			this.inOrphanMode = orphaned;
-			this.orphanedChangeEventScheduler.schedule();
+			this._onDidChangeState.fire(StateChange.ORPHANED_CHANGE);
 		}
 	}
 
@@ -522,8 +516,8 @@ export class TextFileEditorModel extends BaseTextEditorModel implements ITextFil
 		// Mark as dirty
 		this.doMakeDirty();
 
-		// Handle content change events
-		this.contentChangeEventScheduler.schedule();
+		// Emit as event
+		this._onDidChangeContent.fire();
 	}
 
 	makeDirty(): void {
@@ -703,9 +697,6 @@ export class TextFileEditorModel extends BaseTextEditorModel implements ITextFil
 
 				// Updated resolved stat with updated stat
 				this.updateLastResolvedFileStat(stat);
-
-				// Cancel any content change event promises as they are no longer valid
-				this.contentChangeEventScheduler.cancel();
 
 				// Emit Events
 				this._onDidChangeState.fire(StateChange.SAVED);

@@ -45,7 +45,7 @@ export class EditorAutoSave extends Disposable implements IWorkbenchContribution
 		this._register(this.hostService.onDidChangeFocus(focused => this.onWindowFocusChange(focused)));
 		this._register(this.editorService.onDidActiveEditorChange(() => this.onDidActiveEditorChange()));
 		this._register(this.filesConfigurationService.onAutoSaveConfigurationChange(config => this.onAutoSaveConfigurationChange(config, true)));
-		this._register(this.workingCopyService.onDidChangeDirty(workingCopy => this.onDidWorkingCopyChangeDirty(workingCopy)));
+		this._register(this.workingCopyService.onDidChangeContent(workingCopy => this.onDidWorkingCopyChangeContent(workingCopy)));
 	}
 
 	private onWindowFocusChange(focused: boolean): void {
@@ -135,7 +135,7 @@ export class EditorAutoSave extends Disposable implements IWorkbenchContribution
 		}
 	}
 
-	private onDidWorkingCopyChangeDirty(workingCopy: IWorkingCopy): void {
+	private onDidWorkingCopyChangeContent(workingCopy: IWorkingCopy): void {
 		if (typeof this.autoSaveAfterDelay !== 'number') {
 			return; // auto save after delay must be enabled
 		}
@@ -148,9 +148,9 @@ export class EditorAutoSave extends Disposable implements IWorkbenchContribution
 		dispose(this.pendingAutoSavesAfterDelay.get(workingCopy));
 		this.pendingAutoSavesAfterDelay.delete(workingCopy);
 
-		// Working copy got dirty - start auto save
+		// Working copy is dirty - start auto save
 		if (workingCopy.isDirty()) {
-			this.logService.trace(`[editor auto save] starting auto save after ${this.autoSaveAfterDelay}ms`, workingCopy.resource.toString());
+			this.logService.trace(`[editor auto save] scheduling auto save after ${this.autoSaveAfterDelay}ms`, workingCopy.resource.toString());
 
 			// Schedule new auto save
 			const handle = setTimeout(() => {
@@ -160,6 +160,8 @@ export class EditorAutoSave extends Disposable implements IWorkbenchContribution
 
 				// Save if still dirty
 				if (workingCopy.isDirty()) {
+					this.logService.trace(`[editor auto save] running auto save`, workingCopy.resource.toString());
+
 					workingCopy.save({ reason: SaveReason.AUTO });
 				}
 			}, this.autoSaveAfterDelay);

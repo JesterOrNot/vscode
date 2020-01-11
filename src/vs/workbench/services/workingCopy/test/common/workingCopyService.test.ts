@@ -18,6 +18,9 @@ suite('WorkingCopyService', () => {
 		private readonly _onDidChangeDirty = this._register(new Emitter<void>());
 		readonly onDidChangeDirty = this._onDidChangeDirty.event;
 
+		private readonly _onDidChangeContent = this._register(new Emitter<void>());
+		readonly onDidChangeContent = this._onDidChangeContent.event;
+
 		private readonly _onDispose = this._register(new Emitter<void>());
 		readonly onDispose = this._onDispose.event;
 
@@ -36,6 +39,10 @@ suite('WorkingCopyService', () => {
 				this.dirty = dirty;
 				this._onDidChangeDirty.fire();
 			}
+		}
+
+		setContent(content: string): void {
+			this._onDidChangeContent.fire();
 		}
 
 		isDirty(): boolean {
@@ -59,6 +66,9 @@ suite('WorkingCopyService', () => {
 		const onDidChangeDirty: IWorkingCopy[] = [];
 		service.onDidChangeDirty(copy => onDidChangeDirty.push(copy));
 
+		const onDidChangeContent: IWorkingCopy[] = [];
+		service.onDidChangeContent(copy => onDidChangeContent.push(copy));
+
 		assert.equal(service.hasDirty, false);
 		assert.equal(service.dirtyCount, 0);
 		assert.equal(service.workingCopies.length, 0);
@@ -70,6 +80,7 @@ suite('WorkingCopyService', () => {
 		const unregister1 = service.registerWorkingCopy(copy1);
 
 		assert.equal(service.workingCopies.length, 1);
+		assert.equal(service.workingCopies[0], copy1);
 		assert.equal(service.dirtyCount, 0);
 		assert.equal(service.isDirty(resource1), false);
 		assert.equal(service.hasDirty, false);
@@ -81,6 +92,11 @@ suite('WorkingCopyService', () => {
 		assert.equal(service.hasDirty, true);
 		assert.equal(onDidChangeDirty.length, 1);
 		assert.equal(onDidChangeDirty[0], copy1);
+
+		copy1.setContent('foo');
+
+		assert.equal(onDidChangeContent.length, 1);
+		assert.equal(onDidChangeContent[0], copy1);
 
 		copy1.setDirty(false);
 
@@ -105,6 +121,11 @@ suite('WorkingCopyService', () => {
 
 		assert.equal(onDidChangeDirty.length, 3);
 		assert.equal(onDidChangeDirty[2], copy2);
+
+		copy2.setContent('foo');
+
+		assert.equal(onDidChangeContent.length, 2);
+		assert.equal(onDidChangeContent[1], copy2);
 
 		unregister2.dispose();
 		assert.equal(service.dirtyCount, 0);

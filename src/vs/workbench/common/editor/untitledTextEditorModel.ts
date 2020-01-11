@@ -6,11 +6,9 @@
 import { IEncodingSupport, ISaveOptions } from 'vs/workbench/common/editor';
 import { BaseTextEditorModel } from 'vs/workbench/common/editor/textEditorModel';
 import { URI } from 'vs/base/common/uri';
-import { CONTENT_CHANGE_EVENT_BUFFER_DELAY } from 'vs/platform/files/common/files';
 import { IModeService } from 'vs/editor/common/services/modeService';
 import { IModelService } from 'vs/editor/common/services/modelService';
 import { Emitter } from 'vs/base/common/event';
-import { RunOnceScheduler } from 'vs/base/common/async';
 import { IBackupFileService, IResolvedBackup } from 'vs/workbench/services/backup/common/backup';
 import { ITextResourceConfigurationService } from 'vs/editor/common/services/textResourceConfigurationService';
 import { ITextBufferFactory } from 'vs/editor/common/model';
@@ -20,8 +18,6 @@ import { IWorkingCopyService, IWorkingCopy, WorkingCopyCapabilities } from 'vs/w
 import { ITextFileService } from 'vs/workbench/services/textfile/common/textfiles';
 
 export class UntitledTextEditorModel extends BaseTextEditorModel implements IEncodingSupport, IWorkingCopy {
-
-	static DEFAULT_CONTENT_CHANGE_BUFFER_DELAY = CONTENT_CHANGE_EVENT_BUFFER_DELAY;
 
 	private readonly _onDidChangeContent = this._register(new Emitter<void>());
 	readonly onDidChangeContent = this._onDidChangeContent.event;
@@ -36,7 +32,6 @@ export class UntitledTextEditorModel extends BaseTextEditorModel implements IEnc
 
 	private dirty = false;
 	private versionId = 0;
-	private readonly contentChangeEventScheduler = this._register(new RunOnceScheduler(() => this._onDidChangeContent.fire(), UntitledTextEditorModel.DEFAULT_CONTENT_CHANGE_BUFFER_DELAY));
 	private configuredEncoding: string | undefined;
 
 	constructor(
@@ -124,18 +119,13 @@ export class UntitledTextEditorModel extends BaseTextEditorModel implements IEnc
 	async revert(): Promise<boolean> {
 		this.setDirty(false);
 
-		// Handle content change event buffered
-		this.contentChangeEventScheduler.schedule();
-
 		return true;
 	}
 
-	backup(): Promise<void> {
+	async backup(): Promise<void> {
 		if (this.isResolved()) {
 			return this.backupFileService.backupResource(this.resource, this.createSnapshot(), this.versionId);
 		}
-
-		return Promise.resolve();
 	}
 
 	hasBackup(): boolean {
@@ -204,8 +194,8 @@ export class UntitledTextEditorModel extends BaseTextEditorModel implements IEnc
 			this.setDirty(true);
 		}
 
-		// Handle content change event buffered
-		this.contentChangeEventScheduler.schedule();
+		// Emit as event
+		this._onDidChangeContent.fire();
 	}
 
 	isReadonly(): boolean {

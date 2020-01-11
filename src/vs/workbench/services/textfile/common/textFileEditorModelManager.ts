@@ -21,9 +21,6 @@ export class TextFileEditorModelManager extends Disposable implements ITextFileE
 	private readonly _onModelDisposed = this._register(new Emitter<TextFileModelChangeEvent>());
 	readonly onModelDisposed = this._onModelDisposed.event;
 
-	private readonly _onModelContentChanged = this._register(new Emitter<TextFileModelChangeEvent>());
-	readonly onModelContentChanged = this._onModelContentChanged.event;
-
 	private readonly _onModelDirty = this._register(new Emitter<TextFileModelChangeEvent>());
 	readonly onModelDirty = this._onModelDirty.event;
 
@@ -67,15 +64,6 @@ export class TextFileEditorModelManager extends Disposable implements ITextFileE
 		}
 
 		return this._onModelsSaved;
-	}
-
-	private _onModelsReverted: Event<ReadonlyArray<TextFileModelChangeEvent>> | undefined;
-	get onModelsReverted(): Event<ReadonlyArray<TextFileModelChangeEvent>> {
-		if (!this._onModelsReverted) {
-			this._onModelsReverted = this.debounce(this.onModelReverted);
-		}
-
-		return this._onModelsReverted;
 	}
 
 	private readonly mapResourceToDisposeListener = new ResourceMap<IDisposable>();
@@ -205,11 +193,6 @@ export class TextFileEditorModelManager extends Disposable implements ITextFileE
 						this._onModelOrphanedChanged.fire(event);
 						break;
 				}
-			}));
-
-			// Install model content change listener
-			this.mapResourceToModelContentChangeListener.set(resource, model.onDidChangeContent(() => {
-				this._onModelContentChanged.fire(new TextFileModelChangeEvent(newModel, StateChange.CONTENT_CHANGE));
 			}));
 		}
 

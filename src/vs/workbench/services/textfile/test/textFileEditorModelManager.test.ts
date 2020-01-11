@@ -136,9 +136,6 @@ suite('Files - TextFileEditorModelManager', () => {
 	});
 
 	test('events', async function () {
-		TextFileEditorModel.DEFAULT_CONTENT_CHANGE_BUFFER_DELAY = 0;
-		TextFileEditorModel.DEFAULT_ORPHANED_CHANGE_BUFFER_DELAY = 0;
-
 		const manager: TestTextFileEditorModelManager = instantiationService.createInstance(TestTextFileEditorModelManager);
 
 		const resource1 = toResource.call(this, '/path/index.txt');
@@ -149,7 +146,6 @@ suite('Files - TextFileEditorModelManager', () => {
 		let savedCounter = 0;
 		let encodingCounter = 0;
 		let disposeCounter = 0;
-		let contentCounter = 0;
 
 		manager.onModelDirty(e => {
 			if (e.resource.toString() === resource1.toString()) {
@@ -175,12 +171,6 @@ suite('Files - TextFileEditorModelManager', () => {
 			}
 		});
 
-		manager.onModelContentChanged(e => {
-			if (e.resource.toString() === resource1.toString()) {
-				contentCounter++;
-			}
-		});
-
 		manager.onModelDisposed(e => {
 			disposeCounter++;
 		});
@@ -193,14 +183,8 @@ suite('Files - TextFileEditorModelManager', () => {
 		model1.textEditorModel!.setValue('changed');
 		model1.updatePreferredEncoding('utf16');
 
-		await timeout(10);
-		assert.equal(contentCounter, 1);
-
 		await model1.revert();
 		model1.textEditorModel!.setValue('changed again');
-
-		await timeout(10);
-		assert.equal(contentCounter, 2);
 
 		await model1.save();
 		model1.dispose();
@@ -226,18 +210,10 @@ suite('Files - TextFileEditorModelManager', () => {
 		const resource2 = toResource.call(this, '/path/other.txt');
 
 		let dirtyCounter = 0;
-		let revertedCounter = 0;
 		let savedCounter = 0;
-
-		TextFileEditorModel.DEFAULT_CONTENT_CHANGE_BUFFER_DELAY = 0;
 
 		manager.onModelsDirty(e => {
 			dirtyCounter += e.length;
-			assert.equal(e[0].resource.toString(), resource1.toString());
-		});
-
-		manager.onModelsReverted(e => {
-			revertedCounter += e.length;
 			assert.equal(e[0].resource.toString(), resource1.toString());
 		});
 
@@ -261,7 +237,6 @@ suite('Files - TextFileEditorModelManager', () => {
 		await model1.revert();
 		await timeout(20);
 		assert.equal(dirtyCounter, 2);
-		assert.equal(revertedCounter, 1);
 		assert.equal(savedCounter, 1);
 		model1.dispose();
 		model2.dispose();

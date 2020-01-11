@@ -28,9 +28,16 @@ export interface IWorkingCopy {
 	readonly capabilities: WorkingCopyCapabilities;
 
 
-	//#region Dirty Tracking
+	//#region Events
 
 	readonly onDidChangeDirty: Event<void>;
+
+	readonly onDidChangeContent: Event<void>;
+
+	//#endregion
+
+
+	//#region Dirty Tracking
 
 	isDirty(): boolean;
 
@@ -51,9 +58,16 @@ export interface IWorkingCopyService {
 	_serviceBrand: undefined;
 
 
-	//#region Dirty Tracking
+	//#region Events
 
 	readonly onDidChangeDirty: Event<IWorkingCopy>;
+
+	readonly onDidChangeContent: Event<IWorkingCopy>;
+
+	//#endregion
+
+
+	//#region Dirty Tracking
 
 	readonly dirtyCount: number;
 
@@ -77,10 +91,18 @@ export class WorkingCopyService extends Disposable implements IWorkingCopyServic
 
 	_serviceBrand: undefined;
 
-	//#region Dirty Tracking
+	//#region Events
 
 	private readonly _onDidChangeDirty = this._register(new Emitter<IWorkingCopy>());
 	readonly onDidChangeDirty = this._onDidChangeDirty.event;
+
+	private readonly _onDidChangeContent = this._register(new Emitter<IWorkingCopy>());
+	readonly onDidChangeContent = this._onDidChangeContent.event;
+
+	//#endregion
+
+
+	//#region Dirty Tracking
 
 	isDirty(resource: URI): boolean {
 		const workingCopies = this.mapResourceToWorkingCopy.get(resource.toString());
@@ -141,7 +163,8 @@ export class WorkingCopyService extends Disposable implements IWorkingCopyServic
 
 		this._workingCopies.add(workingCopy);
 
-		// Dirty Events
+		// Events
+		disposables.add(workingCopy.onDidChangeContent(() => this._onDidChangeContent.fire(workingCopy)));
 		disposables.add(workingCopy.onDidChangeDirty(() => this._onDidChangeDirty.fire(workingCopy)));
 		if (workingCopy.isDirty()) {
 			this._onDidChangeDirty.fire(workingCopy);
