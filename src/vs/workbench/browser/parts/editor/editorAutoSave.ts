@@ -128,11 +128,11 @@ export class EditorAutoSave extends Disposable implements IWorkbenchContribution
 	}
 
 	private saveAllDirty(options?: ISaveOptions): void {
-		Promise.all(this.workingCopyService.workingCopies.map(workingCopy => {
+		for (const workingCopy of this.workingCopyService.workingCopies) {
 			if (workingCopy.isDirty() && !(workingCopy.capabilities & WorkingCopyCapabilities.Untitled)) {
 				workingCopy.save(options);
 			}
-		}));
+		}
 	}
 
 	private onDidWorkingCopyChangeDirty(workingCopy: IWorkingCopy): void {
@@ -152,12 +152,19 @@ export class EditorAutoSave extends Disposable implements IWorkbenchContribution
 		if (workingCopy.isDirty()) {
 			this.logService.trace(`[editor auto save] starting auto save after ${this.autoSaveAfterDelay}ms`, workingCopy.resource.toString());
 
+			// Schedule new auto save
 			const handle = setTimeout(() => {
+
+				// Clear disposable
+				this.pendingAutoSavesAfterDelay.delete(workingCopy);
+
+				// Save if still dirty
 				if (workingCopy.isDirty()) {
 					workingCopy.save({ reason: SaveReason.AUTO });
 				}
 			}, this.autoSaveAfterDelay);
 
+			// Keep in map for disposal as needed
 			this.pendingAutoSavesAfterDelay.set(workingCopy, toDisposable(() => clearTimeout(handle)));
 		} else {
 			this.logService.trace(`[editor auto save] clearing auto save`, workingCopy.resource.toString());
